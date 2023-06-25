@@ -19,7 +19,7 @@ def logador(external_fucntion=lambda x: None, data=None):
     )
     if decoded_token['exp'] < time.time():
         st.write("falha na autenticação. Por favor, faça login novamente.")
-        st.write("[login](http://127.0.0.1:8000/bol)")
+        st.write("[login](https://cetibol-edabcdbe191e.herokuapp.com/)")
         st.stop()
     external_fucntion(full_name, rm)
 
