@@ -103,7 +103,7 @@ def faltas(rm):
         jus_df["data incial"] = jus_df["data_init"].astype(str)
         jus_df["data final"] = jus_df["data_end"].astype(str)
         jus_df.index = jus_df.reset_index().index + 1
-        st.dataframe(jus_df[['data incial', 'data final', 'Nº de dias justificados', 'Possui atestado?', 'justificativa']])
+        st.table(jus_df[['data incial', 'data final', 'Nº de dias justificados', 'Possui atestado?', 'justificativa']])
     st.divider()
     st.markdown('## FALTÔMETRO')
     unidade_selected = st.selectbox('Selecione a unidade', ['ESCOLHA A UND.:', 'I', 'II', 'III'])
@@ -167,7 +167,7 @@ def faltas(rm):
         pivot = pivot.drop('NOME', axis=1)
         trans = pivot.T
         trans2 = trans.rename(columns={rm: f'FALTAS DE {d_mat_nome.get(rm)}'})
-        st.dataframe(trans2)
+        st.table(trans2)
         sel_turma_current_ = df.copy()
         sel_turma_current = sel_turma_current_.drop(sel_turma_current_[sel_turma_current_['JUSTIFICATIVA'] == 'SIM, COM ATESTADO MÉDICO'].index)
         pivot = pd.pivot_table(sel_turma_current, index='matrícula', columns='componente', values='faltas', aggfunc='sum')
@@ -184,6 +184,6 @@ def faltas(rm):
         st.markdown('#### faltas por componente **COM** abondo de atestado médico')
         trans = pivot.T
         trans2 = trans.rename(columns={rm: f'FALTAS DE {d_mat_nome.get(rm)}'})
-        st.dataframe(trans2)
+        st.table(trans2)
     else:
         st.write('selecione uma unidade para ver o faltômetro')

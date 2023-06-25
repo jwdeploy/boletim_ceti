@@ -59,7 +59,14 @@ def bol(rm):
     if 'TF' in turma or 'TJ' in turma:
         new_pivot = new_pivot.applymap(normalizador)
 
-    st.dataframe(new_pivot, use_container_width=True)
-    st.table(new_pivot)
+    # st.dataframe(new_pivot.reset_index(), use_container_width=True)
+    def transforme(value):
+       if type(value) == str:
+           return value
+       if type(value) == float:
+            #   return only the first decimal place after point
+              return f"{value:.1f}".replace('.', ',')
+       return value
 
+    st.table(new_pivot.applymap(transforme))
 

@@ -75,7 +75,7 @@ def show_student_occurrences(rm):
         ])
         student_occurrences = student_occurrences.set_index('data')
         student_occurrences = student_occurrences.replace({True: "sim", False: "-", "True": "sim", "False": "-"})
-        st.dataframe(student_occurrences.T, use_container_width=True)
+        st.table(student_occurrences.T)
 
 
 
