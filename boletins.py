@@ -50,7 +50,12 @@ def bol(rm):
     my_matters = get_data_at_db_1().get(turma)
     their_grades = pd.DataFrame.from_dict(find_std_grades(rm))
     their_grades = their_grades[['componente', 'unidade', 'med', 'professor']]
-    st.dataframe(their_grades, use_container_width=True)
+    if 'TF' in turma or 'TJ' in turma:
+        outro = their_grades.copy()
+        outro['med'] = outro['med'].apply(normalizador)
+        st.dataframe(outro, use_container_width=True)
+    else:
+        st.dataframe(their_grades, use_container_width=True)
     their_grades = their_grades[['componente', 'unidade', 'med']]
     their_grades = their_grades.replace('FV', 0)
     pivot = pd.pivot_table(their_grades, index='componente', columns='unidade', values='med')

@@ -45,6 +45,10 @@ unidades = {
         'inicio': '01-09-2023',
         'fim': '15-12-2023'
     },
+    "DO INÍCIO DO ANO ATÉ HOJE": {
+        'inicio': '06-02-2023',
+        'fim': '15-12-2023'
+    }
 }
 def faltas(rm):
     unidades_dr = eval(str(unidades))
@@ -106,84 +110,81 @@ def faltas(rm):
         st.table(jus_df[['data incial', 'data final', 'Nº de dias justificados', 'Possui atestado?', 'justificativa']])
     st.divider()
     st.markdown('## FALTÔMETRO')
-    unidade_selected = st.selectbox('Selecione a unidade', ['ESCOLHA A UND.:', 'I', 'II', 'III'])
-    if "I" in unidade_selected:
-        daterange = pd.DatetimeIndex(unidades_dr[unidade_selected])
+    unidade_selected = st.selectbox('Selecione a unidade', ['I', 'II', 'III', "DO INÍCIO DO ANO ATÉ HOJE"])
 
-        def date_convert(date):
-            date = date.split('/')
-            date = datetime(int(date[2]), int(date[1]), int(date[0]))
-            return date
+    daterange = pd.DatetimeIndex(unidades_dr[unidade_selected])
 
-        freq_all['date'] = freq_all['data'].apply(date_convert)
-        mask = freq_all['date'].dt.date.isin(daterange.date)
-        df_filtered = freq_all[mask]
+    def date_convert(date):
+        date = date.split('/')
+        date = datetime(int(date[2]), int(date[1]), int(date[0]))
+        return date
 
+    freq_all['date'] = freq_all['data'].apply(date_convert)
+    mask = freq_all['date'].dt.date.isin(daterange.date)
+    df_filtered = freq_all[mask]
 
+    with_who_missed = df_filtered
+    amostra_nome = all_stds[all_stds['matrícula'].isin([rm])]
+    d_mat_nome = {
+        matrícula: nome for matrícula, nome in zip(amostra_nome.matrícula, amostra_nome.estudante)
+    }
+    df = make_big_df(with_who_missed)
+    class_jus = all_jus[all_jus['matrícula'].isin(df.matrícula)]
+    def classificar_justificativa(row_, class_jus_):
+        df_ = class_jus_[class_jus_["matrícula"] == row_["matrícula"]]
+        if df_.empty:
+            return 'NÃO'
+        else:
+            for j, row in df_.iterrows():
+                data_inicio = datetime.strptime(row["data_init"], '%d/%m/%Y')
+                data_fim = datetime.strptime(row["data_end"], '%d/%m/%Y')
+                verdade = data_inicio.date() <= row_.date.to_pydatetime().date() <= data_fim.date()
+                if verdade:
+                    if row.tem_atestado:
+                        return "SIM, COM ATESTADO MÉDICO"
+                    return 'SIM'
+            return 'NÃO'
+    df = df[df['matrícula'].isin([rm])]
+    df['JUSTIFICATIVA'] = df.apply(
+        lambda row: classificar_justificativa(row, class_jus),
+        axis=1
+    )
+    minhas_datas = unidades[unidade_selected]
+    inicio_ = minhas_datas['inicio']
+    fim_ = minhas_datas['fim']
+    st.markdown(f'### UNIDADE: {unidade_selected}')
+    st.markdown(f'### PERÍODO: {inicio_} à {fim_} ')
+    pivot = pd.pivot_table(df, index='matrícula', columns='componente', values='faltas', aggfunc='sum')
+    pivot['TOTAL_DE_FALTAS'] = pivot.sum(axis=1)
+    pivot = pivot.sort_values(by='TOTAL_DE_FALTAS', ascending=False)
+    pivot = pivot.fillna(0.0)
+    pivot = pivot.astype(int)
+    pivot = pivot.replace(0, '-')
+    pivot['NOME'] = pivot.index.map(d_mat_nome)
+    cols = pivot.columns.tolist()
+    cols = cols[-1:] + cols[:-1]
+    pivot = pivot.loc[:, cols]
+    # pivot = pivot.set_index('NOME')
+    st.markdown('#### faltas por componente **SEM** abondo de atestado médico')
+    pivot = pivot.drop('NOME', axis=1)
+    trans = pivot.T
+    trans2 = trans.rename(columns={rm: f'FALTAS DE {d_mat_nome.get(rm)}'})
+    st.table(trans2)
+    sel_turma_current_ = df.copy()
+    sel_turma_current = sel_turma_current_.drop(sel_turma_current_[sel_turma_current_['JUSTIFICATIVA'] == 'SIM, COM ATESTADO MÉDICO'].index)
+    pivot = pd.pivot_table(sel_turma_current, index='matrícula', columns='componente', values='faltas', aggfunc='sum')
+    pivot['TOTAL_DE_FALTAS'] = pivot.sum(axis=1)
+    pivot = pivot.sort_values(by='TOTAL_DE_FALTAS', ascending=False)
+    pivot = pivot.fillna(0.0)
+    pivot = pivot.astype(int)
+    pivot = pivot.replace(0, '-')
+    pivot['NOME'] = pivot.index.map(d_mat_nome)
+    cols = pivot.columns.tolist()
+    cols = cols[-1:] + cols[:-1]
+    pivot = pivot.loc[:, cols]
+    pivot = pivot.drop('NOME', axis=1)
+    st.markdown('#### faltas por componente **COM** abondo de atestado médico')
+    trans = pivot.T
+    trans2 = trans.rename(columns={rm: f'FALTAS DE {d_mat_nome.get(rm)}'})
+    st.table(trans2)
 
-        with_who_missed = df_filtered
-        amostra_nome = all_stds[all_stds['matrícula'].isin([rm])]
-        d_mat_nome = {
-            matrícula: nome for matrícula, nome in zip(amostra_nome.matrícula, amostra_nome.estudante)
-        }
-        df = make_big_df(with_who_missed)
-        class_jus = all_jus[all_jus['matrícula'].isin(df.matrícula)]
-        def classificar_justificativa(row_, class_jus_):
-            df_ = class_jus_[class_jus_["matrícula"] == row_["matrícula"]]
-            if df_.empty:
-                return 'NÃO'
-            else:
-                for j, row in df_.iterrows():
-                    data_inicio = datetime.strptime(row["data_init"], '%d/%m/%Y')
-                    data_fim = datetime.strptime(row["data_end"], '%d/%m/%Y')
-                    verdade = data_inicio.date() <= row_.date.to_pydatetime().date() <= data_fim.date()
-                    if verdade:
-                        if row.tem_atestado:
-                            return "SIM, COM ATESTADO MÉDICO"
-                        return 'SIM'
-                return 'NÃO'
-        df = df[df['matrícula'].isin([rm])]
-        df['JUSTIFICATIVA'] = df.apply(
-            lambda row: classificar_justificativa(row, class_jus),
-            axis=1
-        )
-        minhas_datas = unidades[unidade_selected]
-        inicio_ = minhas_datas['inicio']
-        fim_ = minhas_datas['fim']
-        st.markdown(f'### UNIDADE: {unidade_selected}')
-        st.markdown(f'### PERÍODO: {inicio_} à {fim_} ')
-        pivot = pd.pivot_table(df, index='matrícula', columns='componente', values='faltas', aggfunc='sum')
-        pivot['TOTAL_DE_FALTAS'] = pivot.sum(axis=1)
-        pivot = pivot.sort_values(by='TOTAL_DE_FALTAS', ascending=False)
-        pivot = pivot.fillna(0.0)
-        pivot = pivot.astype(int)
-        pivot = pivot.replace(0, '-')
-        pivot['NOME'] = pivot.index.map(d_mat_nome)
-        cols = pivot.columns.tolist()
-        cols = cols[-1:] + cols[:-1]
-        pivot = pivot.loc[:, cols]
-        # pivot = pivot.set_index('NOME')
-        st.markdown('#### faltas por componente **SEM** abondo de atestado médico')
-        pivot = pivot.drop('NOME', axis=1)
-        trans = pivot.T
-        trans2 = trans.rename(columns={rm: f'FALTAS DE {d_mat_nome.get(rm)}'})
-        st.table(trans2)
-        sel_turma_current_ = df.copy()
-        sel_turma_current = sel_turma_current_.drop(sel_turma_current_[sel_turma_current_['JUSTIFICATIVA'] == 'SIM, COM ATESTADO MÉDICO'].index)
-        pivot = pd.pivot_table(sel_turma_current, index='matrícula', columns='componente', values='faltas', aggfunc='sum')
-        pivot['TOTAL_DE_FALTAS'] = pivot.sum(axis=1)
-        pivot = pivot.sort_values(by='TOTAL_DE_FALTAS', ascending=False)
-        pivot = pivot.fillna(0.0)
-        pivot = pivot.astype(int)
-        pivot = pivot.replace(0, '-')
-        pivot['NOME'] = pivot.index.map(d_mat_nome)
-        cols = pivot.columns.tolist()
-        cols = cols[-1:] + cols[:-1]
-        pivot = pivot.loc[:, cols]
-        pivot = pivot.drop('NOME', axis=1)
-        st.markdown('#### faltas por componente **COM** abondo de atestado médico')
-        trans = pivot.T
-        trans2 = trans.rename(columns={rm: f'FALTAS DE {d_mat_nome.get(rm)}'})
-        st.table(trans2)
-    else:
-        st.write('selecione uma unidade para ver o faltômetro')
